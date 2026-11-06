@@ -1,0 +1,97 @@
+#!/bin/sh
+# Primeiro boot: rede de convidados isolada + portal cativo (nodogsplash).
+# @@WIFI_PSK@@ e substituido no build pelo segredo WIFI_PSK (opcional).
+
+WIFI_PSK='@@WIFI_PSK@@'
+
+# O arquivo de wireless pode ainda nao existir no primeiro boot.
+[ -e /etc/config/wireless ] || wifi config
+
+# ---------- LAN privada ----------
+uci set network.lan.ipaddr='192.168.1.1'
+
+# ---------- Rede de convidados: bridge propria 192.168.3.0/24 ----------
+uci set network.guest_dev=device
+uci set network.guest_dev.type='bridge'
+uci set network.guest_dev.name='br-guest'
+uci set network.guest_dev.bridge_empty='1'
+
+uci set network.guest=interface
+uci set network.guest.proto='static'
+uci set network.guest.device='br-guest'
+uci set network.guest.ipaddr='192.168.3.1'
+uci set network.guest.netmask='255.255.255.0'
+
+# DHCP dos convidados
+uci set dhcp.guest=dhcp
+uci set dhcp.guest.interface='guest'
+uci set dhcp.guest.start='100'
+uci set dhcp.guest.limit='100'
+uci set dhcp.guest.leasetime='1h'
+
+# ---------- Firewall: convidados so saem para a WAN ----------
+uci set firewall.guest=zone
+uci set firewall.guest.name='guest'
+uci set firewall.guest.network='guest'
+uci set firewall.guest.input='REJECT'
+uci set firewall.guest.output='ACCEPT'
+uci set firewall.guest.forward='REJECT'
+
+uci set firewall.guest_wan=forwarding
+uci set firewall.guest_wan.src='guest'
+uci set firewall.guest_wan.dest='wan'
+
+uci set firewall.guest_dns=rule
+uci set firewall.guest_dns.name='Guest-DNS'
+uci set firewall.guest_dns.src='guest'
+uci set firewall.guest_dns.dest_port='53'
+uci set firewall.guest_dns.proto='tcp udp'
+uci set firewall.guest_dns.target='ACCEPT'
+
+uci set firewall.guest_dhcp=rule
+uci set firewall.guest_dhcp.name='Guest-DHCP'
+uci set firewall.guest_dhcp.src='guest'
+uci set firewall.guest_dhcp.dest_port='67'
+uci set firewall.guest_dhcp.proto='udp'
+uci set firewall.guest_dhcp.family='ipv4'
+uci set firewall.guest_dhcp.target='ACCEPT'
+
+# ---------- Wi-Fi ----------
+uci set wireless.radio0.disabled='0'
+uci set wireless.radio0.country='BR'
+uci set wireless.radio0.channel='auto'
+uci set wireless.radio0.htmode='HT20'
+
+# Rede privada: so habilita se um PSK foi fornecido no build
+if [ -n "$WIFI_PSK" ]; then
+	uci set wireless.default_radio0.ssid='Casa'
+	uci set wireless.default_radio0.encryption='psk2'
+	uci set wireless.default_radio0.key="$WIFI_PSK"
+	uci set wireless.default_radio0.disabled='0'
+else
+	uci set wireless.default_radio0.disabled='1'
+fi
+
+# Rede de convidados: aberta (o portal cativo faz o controle), clientes isolados
+uci set wireless.guest=wifi-iface
+uci set wireless.guest.device='radio0'
+uci set wireless.guest.mode='ap'
+uci set wireless.guest.network='guest'
+uci set wireless.guest.ssid='Convidados'
+uci set wireless.guest.encryption='none'
+uci set wireless.guest.isolate='1'
+uci set wireless.guest.disabled='0'
+
+# ---------- Portal cativo ----------
+uci set nodogsplash.@nodogsplash[0].enabled='1'
+uci set nodogsplash.@nodogsplash[0].gatewayinterface='br-guest'
+uci set nodogsplash.@nodogsplash[0].gatewayname='Rede de Convidados'
+uci set nodogsplash.@nodogsplash[0].maxclients='30'
+uci set nodogsplash.@nodogsplash[0].sessiontimeout='480'
+uci set nodogsplash.@nodogsplash[0].authidletimeout='60'
+
+# ---------- Admin so pela LAN ----------
+uci set dropbear.@dropbear[0].Interface='lan'
+
+uci commit
+exit 0

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$gatewayname</title>
+<style>
+body{font-family:sans-serif;margin:0;background:#f3f4f6;color:#111}
+.card{max-width:360px;margin:12vh auto;padding:24px;background:#fff;border-radius:8px;text-align:center}
+input[type=submit]{padding:12px 28px;font-size:16px;border:0;border-radius:6px;background:#2563eb;color:#fff}
+small{color:#555}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>Bem-vindo(a)</h2>
+<p>Rede de convidados <b>$gatewayname</b>.</p>
+<form method="get" action="$authaction">
+<input type="hidden" name="tok" value="$tok">
+<input type="hidden" name="redir" value="$redir">
+<input type="submit" value="Aceitar e conectar">
+</form>
+<p><small>Ao conectar, voce concorda em usar a rede de forma legal e responsavel.</small></p>
+</div>
+</body>
+</html>
